@@ -6,7 +6,8 @@ const TRACKS = [
   { title: "シン・サトヤン ナイトドライブバージョン", file: "./audio/song6.mp3" }
 ];
 
-const STORAGE_KEY = "dj-satori-ep-spotify-ui-config";
+// 日本時間 2026-03-21 23:59 = UTC 2026-03-21 14:59:00
+const EXPIRE_TIME = new Date("2026-03-21T14:59:00Z").getTime();
 const VISIT_KEY = "dj-satori-ep-spotify-ui-visits";
 
 const cover = document.getElementById("cover");
@@ -19,9 +20,13 @@ const durationEl = document.getElementById("duration");
 const seekBar = document.getElementById("seekBar");
 const finalMessage = document.getElementById("finalMessage");
 
-const config = loadConfig();
 let currentIndex = 0;
 let isSeeking = false;
+
+// 念のため初期状態で非表示を強制
+if (finalMessage) {
+  finalMessage.hidden = true;
+}
 
 const visits = Number(localStorage.getItem(VISIT_KEY) || "0") + 1;
 visitCounter.textContent = String(visits);
@@ -47,23 +52,6 @@ loadTrack(0, false);
 setupButtons();
 setupWave();
 startCountdown();
-
-function loadConfig() {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored) {
-    try {
-      return JSON.parse(stored);
-    } catch (e) { }
-  }
-
-  const cfg = {
-    createdAt: Date.now(),
-    expiresAt: Date.now() + 24 * 60 * 60 * 1000
-  };
-
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
-  return cfg;
-}
 
 function formatTime(sec) {
   if (!Number.isFinite(sec)) return "00:00";
@@ -105,13 +93,15 @@ function setActiveTrack(idx) {
   nowPlaying.textContent = `${idx + 1}. ${TRACKS[idx].title}`;
 }
 
-function loadTrack(idx, autoplay) {
+function loadTrack(idx, autoplay = false) {
   currentIndex = idx;
   setActiveTrack(idx);
   ws.load(TRACKS[idx].file);
 
   if (autoplay) {
-    ws.once("ready", () => ws.play());
+    ws.once("ready", () => {
+      ws.play();
+    });
   }
 }
 
@@ -125,8 +115,8 @@ function setupButtons() {
   });
 
   document.getElementById("prevBtn").addEventListener("click", () => {
-    const next = currentIndex === 0 ? TRACKS.length - 1 : currentIndex - 1;
-    loadTrack(next, true);
+    const prev = currentIndex === 0 ? TRACKS.length - 1 : currentIndex - 1;
+    loadTrack(prev, true);
   });
 
   document.getElementById("nextBtn").addEventListener("click", () => {
@@ -136,13 +126,13 @@ function setupButtons() {
 
   seekBar.addEventListener("input", () => {
     isSeeking = true;
-    const duration = ws.getDuration();
+    const duration = ws.getDuration() || 0;
     const target = (Number(seekBar.value) / 1000) * duration;
     currentTimeEl.textContent = formatTime(target);
   });
 
   seekBar.addEventListener("change", () => {
-    const duration = ws.getDuration();
+    const duration = ws.getDuration() || 0;
     const target = (Number(seekBar.value) / 1000) * duration;
     ws.setTime(target);
     isSeeking = false;
@@ -151,9 +141,10 @@ function setupButtons() {
 
 function setupWave() {
   ws.on("ready", () => {
-    const d = ws.getDuration();
+    const d = ws.getDuration() || 0;
     durationEl.textContent = formatTime(d);
     currentTimeEl.textContent = "00:00";
+    seekBar.value = 0;
 
     const active = tracklist.children[currentIndex];
     if (active) {
@@ -166,7 +157,7 @@ function setupWave() {
 
   ws.on("play", () => {
     cover.classList.add("spinning");
-    finalMessage.hidden = true;
+    if (finalMessage) finalMessage.hidden = true;
   });
 
   ws.on("pause", () => {
@@ -187,21 +178,21 @@ function setupWave() {
     if (currentIndex < TRACKS.length - 1) {
       loadTrack(currentIndex + 1, true);
     } else {
-      finalMessage.hidden = false;
+      if (finalMessage) finalMessage.hidden = false;
     }
   });
 }
 
 function startCountdown() {
   const tick = () => {
-    const diff = config.expiresAt - Date.now();
+    const diff = EXPIRE_TIME - Date.now();
 
     if (diff <= 0) {
       document.body.innerHTML = `
         <main class="expired">
           <section class="expired-card">
             <h1>DJ SATORI EP</h1>
-            <p>この公開は終了しました。</p>
+            <p>公開は終了しました。</p>
           </section>
         </main>
       `;
