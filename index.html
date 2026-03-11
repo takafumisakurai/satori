@@ -23,61 +23,58 @@
   </div>
 
   <main class="page">
-    <audio id="audioPlayer" preload="auto"></audio>
     <section class="album-shell">
-      <div class="album-top">
-        <div class="cover-panel glass">
-          <img id="cover" class="cover" src="./jacket.png" alt="DJ SATORI EP jacket" />
+      <section class="hero-cover glass">
+        <img id="cover" class="hero-cover-image" src="./jacket.png" alt="DJ SATORI EP jacket" />
+      </section>
+
+      <section class="meta-panel glass">
+        <div class="eyebrow">EP</div>
+        <h1>DJ SATORI EP</h1>
+        <p class="subline">Available for 24 Hours ・ Then It Fades</p>
+
+        <div class="action-row">
+          <button id="playBtn" class="btn btn-primary">▶ 再生</button>
+          <button id="pauseBtn" class="btn">⏸ 一時停止</button>
+          <button id="prevBtn" class="icon-btn" aria-label="前の曲">⏮</button>
+          <button id="nextBtn" class="icon-btn" aria-label="次の曲">⏭</button>
         </div>
 
-        <div class="meta-panel glass">
-          <div class="eyebrow">EP</div>
-          <h1>DJ SATORI EP</h1>
-          <p class="subline">Available for 24 Hours ・ Then It Fades</p>
-
-          <div class="action-row">
-            <button id="playBtn" class="btn btn-primary">▶ 再生</button>
-            <button id="pauseBtn" class="btn">⏸ 一時停止</button>
-            <button id="prevBtn" class="icon-btn" aria-label="前の曲">⏮</button>
-            <button id="nextBtn" class="icon-btn" aria-label="次の曲">⏭</button>
+        <div class="now-row">
+          <div>
+            <div class="label">Now Playing</div>
+            <div id="nowPlaying" class="now-playing">1. サンパチ</div>
           </div>
 
-          <div class="now-row">
-            <div>
-              <div class="label">Now Playing</div>
-              <div id="nowPlaying" class="now-playing">1. サンパチ</div>
-            </div>
-
-            <div class="visit-wrap">
-              <div class="label">Visits</div>
-              <div id="visitCounter" class="visit-counter">0</div>
-            </div>
-          </div>
-
-          <div class="seek-card">
-            <div id="waveform"></div>
-
-            <div class="time-row">
-              <span id="currentTime">00:00</span>
-              <input
-                id="seekBar"
-                class="seek-bar"
-                type="range"
-                min="0"
-                max="1000"
-                value="0"
-                aria-label="再生位置"
-              />
-              <span id="duration">00:00</span>
-            </div>
-          </div>
-
-          <div class="countdown-card">
-            <div class="label">削除まで</div>
-            <div id="countdown" class="countdown">--:--:--.---</div>
+          <div class="visit-wrap">
+            <div class="label">Visits</div>
+            <div id="visitCounter" class="visit-counter">0</div>
           </div>
         </div>
-      </div>
+
+        <div class="seek-card">
+          <div id="waveform"></div>
+
+          <div class="time-row">
+            <span id="currentTime">00:00</span>
+            <input
+              id="seekBar"
+              class="seek-bar"
+              type="range"
+              min="0"
+              max="1000"
+              value="0"
+              aria-label="再生位置"
+            />
+            <span id="duration">00:00</span>
+          </div>
+        </div>
+
+        <div class="countdown-card">
+          <div class="label">削除まで</div>
+          <div id="countdown" class="countdown">--:--:--</div>
+        </div>
+      </section>
 
       <section class="tracklist-panel glass">
         <div class="panel-head">
@@ -89,6 +86,7 @@
     </section>
   </main>
 
+  <audio id="audioPlayer" preload="auto"></audio>
   <script src="./app.js"></script>
 </body>
 </html>
