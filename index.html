@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,21 +8,28 @@
   <link rel="stylesheet" href="./style.css" />
   <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
 </head>
-
 <body>
   <div class="bg-wrap">
     <img src="./jacket.png" alt="" class="bg-cover" />
     <div class="bg-overlay"></div>
   </div>
 
+  <canvas id="starCanvas" aria-hidden="true"></canvas>
+  <div id="shootingStars" class="shooting-stars" aria-hidden="true"></div>
+  <div class="ocean" aria-hidden="true">
+    <div class="wave wave-1"></div>
+    <div class="wave wave-2"></div>
+    <div class="wave wave-3"></div>
+  </div>
+
   <main class="page">
     <section class="album-shell">
       <div class="album-top">
-        <div class="cover-panel">
+        <div class="cover-panel glass">
           <img id="cover" class="cover" src="./jacket.png" alt="DJ SATORI EP jacket" />
         </div>
 
-        <div class="meta-panel">
+        <div class="meta-panel glass">
           <div class="eyebrow">EP</div>
           <h1>DJ SATORI EP</h1>
           <p class="subline">Available for 24 Hours ・ Then It Fades</p>
@@ -40,6 +46,7 @@
               <div class="label">Now Playing</div>
               <div id="nowPlaying" class="now-playing">1. サンパチ</div>
             </div>
+
             <div class="visit-wrap">
               <div class="label">Visits</div>
               <div id="visitCounter" class="visit-counter">0</div>
@@ -48,9 +55,18 @@
 
           <div class="seek-card">
             <div id="waveform"></div>
+
             <div class="time-row">
               <span id="currentTime">00:00</span>
-              <input id="seekBar" class="seek-bar" type="range" min="0" max="1000" value="0" />
+              <input
+                id="seekBar"
+                class="seek-bar"
+                type="range"
+                min="0"
+                max="1000"
+                value="0"
+                aria-label="再生位置"
+              />
               <span id="duration">00:00</span>
             </div>
           </div>
@@ -62,17 +78,17 @@
         </div>
       </div>
 
-      <section class="tracklist-panel">
+      <section class="tracklist-panel glass">
         <div class="panel-head">
           <h2>Tracks</h2>
-          <span>Mobile optimized</span>
+          <span>Spotify-style mobile UI</span>
         </div>
         <div id="tracklist" class="tracklist"></div>
       </section>
     </section>
 
     <section id="finalMessage" class="final-message" hidden>
-      <div class="final-card">
+      <div class="final-card glass">
         <h2>DJ SATORI EP</h2>
         <p>Thank you for listening.</p>
         <p class="small">さらば、全てのさとやん。</p>
@@ -82,5 +98,4 @@
 
   <script src="./app.js"></script>
 </body>
-
 </html>
