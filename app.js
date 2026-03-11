@@ -10,6 +10,7 @@ const TRACKS = [
 const EXPIRE_TIME = new Date("2026-03-21T14:59:00Z").getTime();
 const VISIT_KEY = "dj-satori-visits";
 
+const audio = document.getElementById("audioPlayer");
 const tracklist = document.getElementById("tracklist");
 const nowPlaying = document.getElementById("nowPlaying");
 const visitCounter = document.getElementById("visitCounter");
@@ -20,15 +21,6 @@ const seekBar = document.getElementById("seekBar");
 
 let index = 0;
 let isSeeking = false;
-let currentAudio = null;
-let isReady = false;
-
-// 先読み用 audio を全曲分用意
-const AUDIO_POOL = TRACKS.map((track) => {
-  const audio = new Audio(track.file);
-  audio.preload = "auto";
-  return audio;
-});
 
 const visits = Number(localStorage.getItem(VISIT_KEY) || "0") + 1;
 visitCounter.textContent = String(visits);
@@ -36,6 +28,7 @@ localStorage.setItem(VISIT_KEY, String(visits));
 
 const ws = WaveSurfer.create({
   container: "#waveform",
+  media: audio,
   waveColor: "rgba(255,255,255,.24)",
   progressColor: "#1ed760",
   cursorColor: "rgba(255,255,255,.95)",
@@ -50,11 +43,10 @@ const ws = WaveSurfer.create({
 
 renderTracks();
 setupButtons();
-setupWave();
+setupAudioEvents();
 startCountdown();
 initStars();
 startShootingStars();
-bindEndedHandlers();
 loadTrack(0, false);
 
 function formatTime(sec) {
@@ -84,9 +76,7 @@ function renderTracks() {
       <span class="track-title">${track.title}</span>
       <span class="track-duration">--:--</span>
     `;
-    btn.addEventListener("click", () => {
-      loadTrack(i, true);
-    });
+    btn.addEventListener("click", () => loadTrack(i, true));
     tracklist.appendChild(btn);
   });
 }
@@ -98,62 +88,69 @@ function setActiveTrack() {
   nowPlaying.textContent = `${index + 1}. ${TRACKS[index].title}`;
 }
 
-function stopOtherAudios(exceptIndex) {
-  AUDIO_POOL.forEach((audio, i) => {
-    if (i !== exceptIndex) {
-      audio.pause();
-    }
-  });
-}
-
-function updateTrackDurationDisplay() {
+function updateDurationInList() {
   const active = tracklist.children[index];
-  if (!active || !currentAudio) return;
+  if (!active) return;
   const durationCell = active.querySelector(".track-duration");
   if (durationCell) {
-    durationCell.textContent = formatTime(currentAudio.duration || 0);
+    durationCell.textContent = formatTime(audio.duration || 0);
   }
+}
+
+function preloadNextTrack() {
+  const next = index + 1;
+  if (next >= TRACKS.length) return;
+
+  const link = document.createElement("link");
+  link.rel = "preload";
+  link.as = "audio";
+  link.href = TRACKS[next].file;
+  document.head.appendChild(link);
+
+  setTimeout(() => {
+    link.remove();
+  }, 10000);
 }
 
 function loadTrack(i, autoplay = false) {
   index = i;
   setActiveTrack();
 
-  currentAudio = AUDIO_POOL[index];
-  stopOtherAudios(index);
-  isReady = false;
+  audio.src = TRACKS[index].file;
+  audio.load();
 
-  ws.load(currentAudio);
+  currentTimeEl.textContent = "00:00";
+  durationEl.textContent = "00:00";
+  seekBar.value = 0;
 
   if (autoplay) {
-    ws.once("ready", () => {
-      isReady = true;
-      currentAudio.play().catch(() => {});
-    });
+    const onCanPlay = () => {
+      audio.play().catch((err) => {
+        console.error("Playback failed:", err);
+      });
+      audio.removeEventListener("canplay", onCanPlay);
+    };
+    audio.addEventListener("canplay", onCanPlay);
   }
+
+  preloadNextTrack();
 }
 
 function setupButtons() {
   document.getElementById("playBtn").addEventListener("click", () => {
-    if (!currentAudio) return;
+    if (!audio.src) return;
 
-    if (!isReady) {
-      ws.once("ready", () => {
-        isReady = true;
-        currentAudio.play().catch(() => {});
+    if (audio.paused) {
+      audio.play().catch((err) => {
+        console.error("Playback failed:", err);
       });
-      return;
-    }
-
-    if (currentAudio.paused) {
-      currentAudio.play().catch(() => {});
     } else {
-      currentAudio.pause();
+      audio.pause();
     }
   });
 
   document.getElementById("pauseBtn").addEventListener("click", () => {
-    if (currentAudio) currentAudio.pause();
+    audio.pause();
   });
 
   document.getElementById("nextBtn").addEventListener("click", () => {
@@ -168,59 +165,40 @@ function setupButtons() {
 
   seekBar.addEventListener("input", () => {
     isSeeking = true;
-    const duration = currentAudio?.duration || 0;
+    const duration = audio.duration || 0;
     const target = (Number(seekBar.value) / 1000) * duration;
     currentTimeEl.textContent = formatTime(target);
   });
 
   seekBar.addEventListener("change", () => {
-    if (!currentAudio) return;
-    const duration = currentAudio.duration || 0;
+    const duration = audio.duration || 0;
     const target = (Number(seekBar.value) / 1000) * duration;
-    currentAudio.currentTime = target;
+    audio.currentTime = target;
     isSeeking = false;
   });
 }
 
-function setupWave() {
-  ws.on("ready", () => {
-    isReady = true;
-    const d = currentAudio?.duration || ws.getDuration() || 0;
-    durationEl.textContent = formatTime(d);
-    currentTimeEl.textContent = formatTime(currentAudio?.currentTime || 0);
-    seekBar.value = d
-      ? Math.min(1000, Math.round(((currentAudio?.currentTime || 0) / d) * 1000))
-      : 0;
-    updateTrackDurationDisplay();
+function setupAudioEvents() {
+  audio.addEventListener("loadedmetadata", () => {
+    durationEl.textContent = formatTime(audio.duration || 0);
+    updateDurationInList();
   });
 
-  ws.on("timeupdate", (t) => {
-    if (!isSeeking) {
-      const d = currentAudio?.duration || ws.getDuration() || 0;
-      currentTimeEl.textContent = formatTime(t);
-      seekBar.value = d ? Math.min(1000, Math.round((t / d) * 1000)) : 0;
+  audio.addEventListener("timeupdate", () => {
+    if (isSeeking) return;
+
+    const d = audio.duration || 0;
+    const t = audio.currentTime || 0;
+    currentTimeEl.textContent = formatTime(t);
+    seekBar.value = d ? Math.min(1000, Math.round((t / d) * 1000)) : 0;
+  });
+
+  audio.addEventListener("ended", () => {
+    if (index < TRACKS.length - 1) {
+      loadTrack(index + 1, true);
+    } else {
+      loadTrack(0, false);
     }
-  });
-}
-
-function bindEndedHandlers() {
-  AUDIO_POOL.forEach((audio, i) => {
-    audio.onended = () => {
-      if (i !== index) return;
-
-      if (index < TRACKS.length - 1) {
-        loadTrack(index + 1, true);
-      } else {
-        loadTrack(0, false);
-      }
-    };
-
-    audio.addEventListener("loadedmetadata", () => {
-      if (AUDIO_POOL[index] === audio) {
-        durationEl.textContent = formatTime(audio.duration || 0);
-        updateTrackDurationDisplay();
-      }
-    });
   });
 }
 
