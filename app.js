@@ -10,7 +10,6 @@ const TRACKS = [
 const EXPIRE_TIME = new Date("2026-03-21T14:59:00Z").getTime();
 const VISIT_KEY = "dj-satori-visits";
 
-const cover = document.getElementById("cover");
 const tracklist = document.getElementById("tracklist");
 const nowPlaying = document.getElementById("nowPlaying");
 const visitCounter = document.getElementById("visitCounter");
@@ -21,6 +20,15 @@ const seekBar = document.getElementById("seekBar");
 
 let index = 0;
 let isSeeking = false;
+let currentAudio = null;
+let isReady = false;
+
+// 先読み用 audio を全曲分用意
+const AUDIO_POOL = TRACKS.map((track) => {
+  const audio = new Audio(track.file);
+  audio.preload = "auto";
+  return audio;
+});
 
 const visits = Number(localStorage.getItem(VISIT_KEY) || "0") + 1;
 visitCounter.textContent = String(visits);
@@ -32,22 +40,22 @@ const ws = WaveSurfer.create({
   progressColor: "#1ed760",
   cursorColor: "rgba(255,255,255,.95)",
   height: 90,
-  barWidth: 3,
+  barWidth: 2,
   barGap: 2,
-  barRadius: 3,
+  barRadius: 2,
   normalize: true,
   dragToSeek: true,
-  responsive: true,
-  url: TRACKS[0].file
+  responsive: true
 });
 
 renderTracks();
-loadTrack(index, false);
 setupButtons();
 setupWave();
 startCountdown();
 initStars();
 startShootingStars();
+bindEndedHandlers();
+loadTrack(0, false);
 
 function formatTime(sec) {
   if (!Number.isFinite(sec)) return "00:00";
@@ -61,8 +69,7 @@ function formatCountdown(ms) {
   const h = Math.floor(total / 3600000);
   const m = Math.floor((total % 3600000) / 60000);
   const s = Math.floor((total % 60000) / 1000);
-  const msPart = Math.floor(total % 1000);
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(msPart).padStart(3, "0")}`;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 function renderTracks() {
@@ -78,8 +85,7 @@ function renderTracks() {
       <span class="track-duration">--:--</span>
     `;
     btn.addEventListener("click", () => {
-      index = i;
-      loadTrack(index, true);
+      loadTrack(i, true);
     });
     tracklist.appendChild(btn);
   });
@@ -92,25 +98,62 @@ function setActiveTrack() {
   nowPlaying.textContent = `${index + 1}. ${TRACKS[index].title}`;
 }
 
+function stopOtherAudios(exceptIndex) {
+  AUDIO_POOL.forEach((audio, i) => {
+    if (i !== exceptIndex) {
+      audio.pause();
+    }
+  });
+}
+
+function updateTrackDurationDisplay() {
+  const active = tracklist.children[index];
+  if (!active || !currentAudio) return;
+  const durationCell = active.querySelector(".track-duration");
+  if (durationCell) {
+    durationCell.textContent = formatTime(currentAudio.duration || 0);
+  }
+}
+
 function loadTrack(i, autoplay = false) {
   index = i;
   setActiveTrack();
-  ws.load(TRACKS[index].file);
+
+  currentAudio = AUDIO_POOL[index];
+  stopOtherAudios(index);
+  isReady = false;
+
+  ws.load(currentAudio);
 
   if (autoplay) {
     ws.once("ready", () => {
-      ws.play();
+      isReady = true;
+      currentAudio.play().catch(() => {});
     });
   }
 }
 
 function setupButtons() {
   document.getElementById("playBtn").addEventListener("click", () => {
-    ws.playPause();
+    if (!currentAudio) return;
+
+    if (!isReady) {
+      ws.once("ready", () => {
+        isReady = true;
+        currentAudio.play().catch(() => {});
+      });
+      return;
+    }
+
+    if (currentAudio.paused) {
+      currentAudio.play().catch(() => {});
+    } else {
+      currentAudio.pause();
+    }
   });
 
   document.getElementById("pauseBtn").addEventListener("click", () => {
-    ws.pause();
+    if (currentAudio) currentAudio.pause();
   });
 
   document.getElementById("nextBtn").addEventListener("click", () => {
@@ -125,58 +168,59 @@ function setupButtons() {
 
   seekBar.addEventListener("input", () => {
     isSeeking = true;
-    const duration = ws.getDuration() || 0;
+    const duration = currentAudio?.duration || 0;
     const target = (Number(seekBar.value) / 1000) * duration;
     currentTimeEl.textContent = formatTime(target);
   });
 
   seekBar.addEventListener("change", () => {
-    const duration = ws.getDuration() || 0;
+    if (!currentAudio) return;
+    const duration = currentAudio.duration || 0;
     const target = (Number(seekBar.value) / 1000) * duration;
-    ws.setTime(target);
+    currentAudio.currentTime = target;
     isSeeking = false;
   });
 }
 
 function setupWave() {
   ws.on("ready", () => {
-    const d = ws.getDuration() || 0;
+    isReady = true;
+    const d = currentAudio?.duration || ws.getDuration() || 0;
     durationEl.textContent = formatTime(d);
-    currentTimeEl.textContent = "00:00";
-    seekBar.value = 0;
-
-    const active = tracklist.children[index];
-    if (active) {
-      const durationCell = active.querySelector(".track-duration");
-      if (durationCell) durationCell.textContent = formatTime(d);
-    }
-  });
-
-  ws.on("play", () => {
-    cover.classList.add("spinning");
-  });
-
-  ws.on("pause", () => {
-    cover.classList.remove("spinning");
-  });
-
-  ws.on("finish", () => {
-    cover.classList.remove("spinning");
-
-    if (index < TRACKS.length - 1) {
-      loadTrack(index + 1, true);
-    } else {
-      index = 0;
-      loadTrack(0, false);
-    }
+    currentTimeEl.textContent = formatTime(currentAudio?.currentTime || 0);
+    seekBar.value = d
+      ? Math.min(1000, Math.round(((currentAudio?.currentTime || 0) / d) * 1000))
+      : 0;
+    updateTrackDurationDisplay();
   });
 
   ws.on("timeupdate", (t) => {
     if (!isSeeking) {
-      const d = ws.getDuration() || 0;
+      const d = currentAudio?.duration || ws.getDuration() || 0;
       currentTimeEl.textContent = formatTime(t);
       seekBar.value = d ? Math.min(1000, Math.round((t / d) * 1000)) : 0;
     }
+  });
+}
+
+function bindEndedHandlers() {
+  AUDIO_POOL.forEach((audio, i) => {
+    audio.onended = () => {
+      if (i !== index) return;
+
+      if (index < TRACKS.length - 1) {
+        loadTrack(index + 1, true);
+      } else {
+        loadTrack(0, false);
+      }
+    };
+
+    audio.addEventListener("loadedmetadata", () => {
+      if (AUDIO_POOL[index] === audio) {
+        durationEl.textContent = formatTime(audio.duration || 0);
+        updateTrackDurationDisplay();
+      }
+    });
   });
 }
 
