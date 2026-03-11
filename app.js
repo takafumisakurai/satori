@@ -18,14 +18,9 @@ const countdown = document.getElementById("countdown");
 const currentTimeEl = document.getElementById("currentTime");
 const durationEl = document.getElementById("duration");
 const seekBar = document.getElementById("seekBar");
-const finalMessage = document.getElementById("finalMessage");
 
 let index = 0;
 let isSeeking = false;
-
-if (finalMessage) {
-  finalMessage.hidden = true;
-}
 
 const visits = Number(localStorage.getItem(VISIT_KEY) || "0") + 1;
 visitCounter.textContent = String(visits);
@@ -159,19 +154,10 @@ function setupWave() {
 
   ws.on("play", () => {
     cover.classList.add("spinning");
-    finalMessage.hidden = true;
   });
 
   ws.on("pause", () => {
     cover.classList.remove("spinning");
-  });
-
-  ws.on("timeupdate", (t) => {
-    if (!isSeeking) {
-      const d = ws.getDuration() || 0;
-      currentTimeEl.textContent = formatTime(t);
-      seekBar.value = d ? Math.min(1000, Math.round((t / d) * 1000)) : 0;
-    }
   });
 
   ws.on("finish", () => {
@@ -180,7 +166,16 @@ function setupWave() {
     if (index < TRACKS.length - 1) {
       loadTrack(index + 1, true);
     } else {
-      finalMessage.hidden = false;
+      index = 0;
+      loadTrack(0, false);
+    }
+  });
+
+  ws.on("timeupdate", (t) => {
+    if (!isSeeking) {
+      const d = ws.getDuration() || 0;
+      currentTimeEl.textContent = formatTime(t);
+      seekBar.value = d ? Math.min(1000, Math.round((t / d) * 1000)) : 0;
     }
   });
 }
