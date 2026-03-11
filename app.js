@@ -6,9 +6,9 @@ const TRACKS = [
   { title: "シン・サトヤン ナイトドライブバージョン", file: "./audio/song6.mp3" }
 ];
 
-// 日本時間 2026-03-21 23:59 = UTC 2026-03-21 14:59:00
+// JST 2026-03-21 23:59 = UTC 2026-03-21 14:59:00
 const EXPIRE_TIME = new Date("2026-03-21T14:59:00Z").getTime();
-const VISIT_KEY = "dj-satori-ep-spotify-ui-visits";
+const VISIT_KEY = "dj-satori-visits";
 
 const cover = document.getElementById("cover");
 const tracklist = document.getElementById("tracklist");
@@ -20,10 +20,9 @@ const durationEl = document.getElementById("duration");
 const seekBar = document.getElementById("seekBar");
 const finalMessage = document.getElementById("finalMessage");
 
-let currentIndex = 0;
+let index = 0;
 let isSeeking = false;
 
-// 念のため初期状態で非表示を強制
 if (finalMessage) {
   finalMessage.hidden = true;
 }
@@ -47,11 +46,13 @@ const ws = WaveSurfer.create({
   url: TRACKS[0].file
 });
 
-renderTracklist();
-loadTrack(0, false);
+renderTracks();
+loadTrack(index, false);
 setupButtons();
 setupWave();
 startCountdown();
+initStars();
+startShootingStars();
 
 function formatTime(sec) {
   if (!Number.isFinite(sec)) return "00:00";
@@ -69,34 +70,37 @@ function formatCountdown(ms) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(msPart).padStart(3, "0")}`;
 }
 
-function renderTracklist() {
+function renderTracks() {
   tracklist.innerHTML = "";
 
-  TRACKS.forEach((track, idx) => {
+  TRACKS.forEach((track, i) => {
     const btn = document.createElement("button");
     btn.className = "track";
     btn.type = "button";
     btn.innerHTML = `
-      <span class="track-index">${idx + 1}</span>
+      <span class="track-index">${i + 1}</span>
       <span class="track-title">${track.title}</span>
       <span class="track-duration">--:--</span>
     `;
-    btn.addEventListener("click", () => loadTrack(idx, true));
+    btn.addEventListener("click", () => {
+      index = i;
+      loadTrack(index, true);
+    });
     tracklist.appendChild(btn);
   });
 }
 
-function setActiveTrack(idx) {
+function setActiveTrack() {
   [...tracklist.children].forEach((el, i) => {
-    el.classList.toggle("active", i === idx);
+    el.classList.toggle("active", i === index);
   });
-  nowPlaying.textContent = `${idx + 1}. ${TRACKS[idx].title}`;
+  nowPlaying.textContent = `${index + 1}. ${TRACKS[index].title}`;
 }
 
-function loadTrack(idx, autoplay = false) {
-  currentIndex = idx;
-  setActiveTrack(idx);
-  ws.load(TRACKS[idx].file);
+function loadTrack(i, autoplay = false) {
+  index = i;
+  setActiveTrack();
+  ws.load(TRACKS[index].file);
 
   if (autoplay) {
     ws.once("ready", () => {
@@ -114,14 +118,14 @@ function setupButtons() {
     ws.pause();
   });
 
-  document.getElementById("prevBtn").addEventListener("click", () => {
-    const prev = currentIndex === 0 ? TRACKS.length - 1 : currentIndex - 1;
-    loadTrack(prev, true);
+  document.getElementById("nextBtn").addEventListener("click", () => {
+    const next = (index + 1) % TRACKS.length;
+    loadTrack(next, true);
   });
 
-  document.getElementById("nextBtn").addEventListener("click", () => {
-    const next = (currentIndex + 1) % TRACKS.length;
-    loadTrack(next, true);
+  document.getElementById("prevBtn").addEventListener("click", () => {
+    const prev = (index - 1 + TRACKS.length) % TRACKS.length;
+    loadTrack(prev, true);
   });
 
   seekBar.addEventListener("input", () => {
@@ -146,18 +150,16 @@ function setupWave() {
     currentTimeEl.textContent = "00:00";
     seekBar.value = 0;
 
-    const active = tracklist.children[currentIndex];
+    const active = tracklist.children[index];
     if (active) {
       const durationCell = active.querySelector(".track-duration");
-      if (durationCell) {
-        durationCell.textContent = formatTime(d);
-      }
+      if (durationCell) durationCell.textContent = formatTime(d);
     }
   });
 
   ws.on("play", () => {
     cover.classList.add("spinning");
-    if (finalMessage) finalMessage.hidden = true;
+    finalMessage.hidden = true;
   });
 
   ws.on("pause", () => {
@@ -175,10 +177,10 @@ function setupWave() {
   ws.on("finish", () => {
     cover.classList.remove("spinning");
 
-    if (currentIndex < TRACKS.length - 1) {
-      loadTrack(currentIndex + 1, true);
+    if (index < TRACKS.length - 1) {
+      loadTrack(index + 1, true);
     } else {
-      if (finalMessage) finalMessage.hidden = false;
+      finalMessage.hidden = false;
     }
   });
 }
@@ -204,4 +206,72 @@ function startCountdown() {
   };
 
   tick();
+}
+
+function initStars() {
+  const canvas = document.getElementById("starCanvas");
+  const ctx = canvas.getContext("2d");
+  const stars = [];
+  const count = 130;
+
+  function resize() {
+    canvas.width = window.innerWidth * window.devicePixelRatio;
+    canvas.height = window.innerHeight * window.devicePixelRatio;
+    canvas.style.width = `${window.innerWidth}px`;
+    canvas.style.height = `${window.innerHeight}px`;
+    ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+  }
+
+  function makeStar() {
+    return {
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 1.8 + 0.3,
+      a: Math.random() * 0.5 + 0.2,
+      v: Math.random() * 0.18 + 0.03
+    };
+  }
+
+  for (let i = 0; i < count; i++) {
+    stars.push(makeStar());
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+    for (const star of stars) {
+      star.y += star.v;
+      if (star.y > window.innerHeight) {
+        star.y = -4;
+        star.x = Math.random() * window.innerWidth;
+      }
+
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(255,255,255,${star.a})`;
+      ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  draw();
+  window.addEventListener("resize", resize);
+}
+
+function startShootingStars() {
+  const layer = document.getElementById("shootingStars");
+
+  setInterval(() => {
+    const star = document.createElement("div");
+    star.className = "shooting-star";
+    star.style.left = `${Math.random() * (window.innerWidth * 0.7)}px`;
+    star.style.top = `${Math.random() * (window.innerHeight * 0.35)}px`;
+    layer.appendChild(star);
+
+    setTimeout(() => {
+      star.remove();
+    }, 1900);
+  }, 4200);
 }
