@@ -208,15 +208,6 @@ body {
   transform-origin: center center;
 }
 
-.cover.spinning {
-  animation: spin 14s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0); }
-  to { transform: rotate(360deg); }
-}
-
 .meta-panel {
   padding: 24px;
 }
