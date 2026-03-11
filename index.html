@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DJ SATORI EP</title>
+  <meta name="theme-color" content="#0b0d12" />
+  <link rel="stylesheet" href="./style.css" />
+  <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
+</head>
+
+<body>
+  <div class="bg-wrap">
+    <img src="./jacket.png" alt="" class="bg-cover" />
+    <div class="bg-overlay"></div>
+  </div>
+
+  <main class="page">
+    <section class="album-shell">
+      <div class="album-top">
+        <div class="cover-panel">
+          <img id="cover" class="cover" src="./jacket.png" alt="DJ SATORI EP jacket" />
+        </div>
+
+        <div class="meta-panel">
+          <div class="eyebrow">EP</div>
+          <h1>DJ SATORI EP</h1>
+          <p class="subline">Available for 24 Hours ・ Then It Fades</p>
+
+          <div class="action-row">
+            <button id="playBtn" class="btn btn-primary">▶ 再生</button>
+            <button id="pauseBtn" class="btn">⏸ 一時停止</button>
+            <button id="prevBtn" class="icon-btn" aria-label="前の曲">⏮</button>
+            <button id="nextBtn" class="icon-btn" aria-label="次の曲">⏭</button>
+          </div>
+
+          <div class="now-row">
+            <div>
+              <div class="label">Now Playing</div>
+              <div id="nowPlaying" class="now-playing">1. サンパチ</div>
+            </div>
+            <div class="visit-wrap">
+              <div class="label">Visits</div>
+              <div id="visitCounter" class="visit-counter">0</div>
+            </div>
+          </div>
+
+          <div class="seek-card">
+            <div id="waveform"></div>
+            <div class="time-row">
+              <span id="currentTime">00:00</span>
+              <input id="seekBar" class="seek-bar" type="range" min="0" max="1000" value="0" />
+              <span id="duration">00:00</span>
+            </div>
+          </div>
+
+          <div class="countdown-card">
+            <div class="label">削除まで</div>
+            <div id="countdown" class="countdown">--:--:--.---</div>
+          </div>
+        </div>
+      </div>
+
+      <section class="tracklist-panel">
+        <div class="panel-head">
+          <h2>Tracks</h2>
+          <span>Mobile optimized</span>
+        </div>
+        <div id="tracklist" class="tracklist"></div>
+      </section>
+    </section>
+
+    <section id="finalMessage" class="final-message" hidden>
+      <div class="final-card">
+        <h2>DJ SATORI EP</h2>
+        <p>Thank you for listening.</p>
+        <p class="small">さらば、全てのさとやん。</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+
+</html>
