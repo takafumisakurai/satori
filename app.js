@@ -6,8 +6,8 @@ const TRACKS = [
   { title: "シン・サトヤン ナイトドライブバージョン", file: "./audio/song6.mp3" }
 ];
 
-// JST 2026-03-21 23:59 = UTC 2026-03-21 14:59:00
-const EXPIRE_TIME = new Date("2026-03-21T14:59:00Z").getTime();
+// JST 2036-05-31 23:59 = UTC 2036-05-31 14:59:00
+const EXPIRE_TIME = new Date("2036-05-31T14:59:00Z").getTime();
 const VISIT_KEY = "dj-satori-visits";
 
 const tracklist = document.getElementById("tracklist");
@@ -56,11 +56,14 @@ function formatTime(sec) {
 }
 
 function formatCountdown(ms) {
-  const total = Math.max(0, ms);
-  const h = Math.floor(total / 3600000);
-  const m = Math.floor((total % 3600000) / 60000);
-  const s = Math.floor((total % 60000) / 1000);
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(totalSeconds / 86400);
+  const h = Math.floor((totalSeconds % 86400) / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+
+  return d > 0 ? `${d}日 ${time}` : time;
 }
 
 function renderTracks() {
